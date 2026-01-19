@@ -19,6 +19,7 @@ export interface RegistrationContextType {
     remainingSeats: number;
     registerUser: (user: UserInput) => void;
     setTotalSeats: (count: number) => void;
+    fetchUsers: (params?: { search?: string; sortBy?: string; sortOrder?: string }) => void;
 }
 
 export interface Column {
@@ -30,4 +31,7 @@ export interface TableProps {
     data: any[];
     columns: Column[];
     title: string;
+    onSearch?: (term: string) => void;
+    onSort?: (key: string, direction: 'asc' | 'desc') => void;
+    sortConfig?: { key: string; direction: 'asc' | 'desc' };
 }

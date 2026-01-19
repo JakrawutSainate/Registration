@@ -9,6 +9,15 @@ export const RegistrationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const [users, setUsers] = useState<User[]>([]);
     const [stats, setStats] = useState({ totalSeats: 0, usedSeats: 0, remainingSeats: 0 });
 
+    const fetchUsers = async (params?: { search?: string; sortBy?: string; sortOrder?: string }) => {
+        try {
+            const usersData = await API.getAllUsers(params);
+            setUsers(usersData);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const fetchData = async () => {
         try {
             // Fetch users and stats in parallel
@@ -54,7 +63,8 @@ export const RegistrationProvider: React.FC<{ children: ReactNode }> = ({ childr
         usedSeats: stats.usedSeats,
         remainingSeats: stats.remainingSeats,
         registerUser,
-        setTotalSeats
+        setTotalSeats,
+        fetchUsers
     }), [users, stats]);
 
     return (

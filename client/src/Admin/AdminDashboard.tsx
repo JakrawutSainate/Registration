@@ -4,14 +4,26 @@ import { Table } from '../Components/Table';
 import { Card, Button, Input } from '../Components/UI';
 
 export default function AdminDashboard() {
-    const { users, setTotalSeats, totalSeats, remainingSeats, usedSeats } = useRegistration();
+    const { users, setTotalSeats, totalSeats, remainingSeats, usedSeats, fetchUsers } = useRegistration();
     const [seatInput, setSeatInput] = useState(String(totalSeats));
+    const [search, setSearch] = useState("");
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'createdAt', direction: 'desc' });
 
     const handleUpdateKey = () => {
         const num = parseInt(seatInput, 10);
         if (!isNaN(num) && num >= 0) {
             setTotalSeats(num);
         }
+    };
+
+    const handleSearch = (term: string) => {
+        setSearch(term);
+        fetchUsers({ search: term, sortBy: sortConfig.key, sortOrder: sortConfig.direction });
+    };
+
+    const handleSort = (key: string, direction: 'asc' | 'desc') => {
+        setSortConfig({ key, direction });
+        fetchUsers({ search, sortBy: key, sortOrder: direction });
     };
 
     return (
@@ -59,6 +71,9 @@ export default function AdminDashboard() {
                     { header: 'Last Name', accessor: 'lastName' },
                     { header: 'Phone Number', accessor: 'phone' },
                 ]}
+                onSearch={handleSearch}
+                onSort={handleSort}
+                sortConfig={sortConfig}
             />
         </div>
     );

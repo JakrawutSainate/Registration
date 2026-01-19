@@ -2,47 +2,73 @@ import { useState, useMemo } from 'react';
 import { Input, Card } from './UI';
 import type { TableProps } from '../types';
 
-export function Table({ data, columns, title }: TableProps) {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [sortKey, setSortKey] = useState("");
-    const [sortDirection, setSortDirection] = useState("asc");
+export function Table({ data, columns, title, onSearch, onSort, sortConfig }: TableProps) {
+    // Internal state for client-side fallback
+    const [internalSearchTerm, setInternalSearchTerm] = useState("");
+    const [internalSortKey, setInternalSortKey] = useState("");
+    const [internalSortDirection, setInternalSortDirection] = useState("asc");
 
-    const filteredAndSortedData = useMemo(() => {
+    // Determine values to use
+    // Let's keep it simple: If onSearch provided, we assume parent handles data fetching but we can still keep local input state for the UI.
+    // Given the prompt "simple code", let's make the Table component handle the INPUT state locally but trigger the callback.
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (onSearch) {
+            onSearch(value);
+        } else {
+            setInternalSearchTerm(value);
+        }
+    };
+
+    const handleSortClick = (key: string) => {
+        if (onSort) {
+            const currentDir = sortConfig?.key === key ? sortConfig.direction : 'desc'; // Default to desc if new key? Or whatever.
+            const newDir = currentDir === 'asc' ? 'desc' : 'asc';
+            onSort(key, newDir);
+        } else {
+            if (internalSortKey === key) {
+                setInternalSortDirection(internalSortDirection === 'asc' ? 'desc' : 'asc');
+            } else {
+                setInternalSortKey(key);
+                setInternalSortDirection('asc');
+            }
+        }
+    };
+
+    const finalData = useMemo(() => {
+        // If server-side mode (handlers present), assume data is already processed
+        if (onSearch || onSort) return data;
+
         let processedData = [...data];
 
-        // Search
-        if (searchTerm) {
+        // Client-side Search
+        if (internalSearchTerm) {
             processedData = processedData.filter((item) =>
                 Object.values(item).some((val) =>
-                    String(val).toLowerCase().includes(searchTerm.toLowerCase())
+                    String(val).toLowerCase().includes(internalSearchTerm.toLowerCase())
                 )
             );
         }
 
-        // Sort
-        if (sortKey) {
+        // Client-side Sort
+        if (internalSortKey) {
             processedData.sort((a, b) => {
-                if (a[sortKey] < b[sortKey]) {
-                    return sortDirection === 'asc' ? -1 : 1;
+                if (a[internalSortKey] < b[internalSortKey]) {
+                    return internalSortDirection === 'asc' ? -1 : 1;
                 }
-                if (a[sortKey] > b[sortKey]) {
-                    return sortDirection === 'asc' ? 1 : -1;
+                if (a[internalSortKey] > b[internalSortKey]) {
+                    return internalSortDirection === 'asc' ? 1 : -1;
                 }
                 return 0;
             });
         }
 
         return processedData;
-    }, [data, searchTerm, sortKey, sortDirection]);
+    }, [data, internalSearchTerm, internalSortKey, internalSortDirection, onSearch, onSort]);
 
-    const handleSort = (key: string) => {
-        if (sortKey === key) {
-            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortKey(key);
-            setSortDirection('asc');
-        }
-    };
+    const activeSortKey = sortConfig ? sortConfig.key : internalSortKey;
+    const activeSortDirection = sortConfig ? sortConfig.direction : internalSortDirection;
 
     return (
         <Card className="overflow-hidden p-0">
@@ -53,8 +79,8 @@ export function Table({ data, columns, title }: TableProps) {
                         <Input
                             label=""
                             placeholder="Search..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            defaultValue="" // Use defaultValue to avoid controlled/uncontrolled issues if we don't pass value
+                            onChange={handleSearchChange}
                         />
                     </div>
                 </div>
@@ -68,12 +94,12 @@ export function Table({ data, columns, title }: TableProps) {
                                 <th
                                     key={col.accessor}
                                     className="px-6 py-4 text-sm font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors select-none"
-                                    onClick={() => handleSort(col.accessor)}
+                                    onClick={() => handleSortClick(col.accessor)}
                                 >
                                     <div className="flex items-center gap-2">
                                         {col.header}
-                                        {sortKey === col.accessor && (
-                                            <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                        {activeSortKey === col.accessor && (
+                                            <span>{activeSortDirection === 'asc' ? '↑' : '↓'}</span>
                                         )}
                                     </div>
                                 </th>
@@ -81,8 +107,8 @@ export function Table({ data, columns, title }: TableProps) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {filteredAndSortedData.length > 0 ? (
-                            filteredAndSortedData.map((row, index) => (
+                        {finalData.length > 0 ? (
+                            finalData.map((row, index) => (
                                 <tr key={index} className="hover:bg-slate-50/50 transition-colors">
                                     {columns.map((col) => (
                                         <td key={col.accessor} className="px-6 py-4 text-sm text-slate-700">
@@ -102,7 +128,7 @@ export function Table({ data, columns, title }: TableProps) {
                 </table>
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500 text-right">
-                Total {filteredAndSortedData.length} records
+                Total {finalData.length} records
             </div>
         </Card>
     );

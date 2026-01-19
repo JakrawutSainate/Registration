@@ -4,9 +4,27 @@ const Config = require('../../../models/config');
 module.exports = new class UserController {
 
     // GET: List all users
+    // GET: List all users
     async getAllUsers(req, res) {
         try {
-            const users = await User.find().sort({ createdAt: -1 });
+            const { search, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+
+            // Build Filter
+            const filter = {};
+            if (search) {
+                const searchRegex = new RegExp(search, 'i');
+                filter.$or = [
+                    { firstName: searchRegex },
+                    { lastName: searchRegex },
+                    { phone: searchRegex }
+                ];
+            }
+
+            // Build Sort
+            const sort = {};
+            sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+            const users = await User.find(filter).sort(sort);
             res.json(users);
         } catch (err) {
             res.status(500).json({ error: err.message });

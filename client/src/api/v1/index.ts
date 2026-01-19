@@ -24,7 +24,10 @@ const fetcher = {
 
 export const API = {
     // User Routes
-    getAllUsers: () => fetcher.get('/users'),
+    getAllUsers: (params?: { search?: string; sortBy?: string; sortOrder?: string }) => {
+        const query = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+        return fetcher.get(`/users${query}`);
+    },
     getUserStats: () => fetcher.get('/users/stats'),
     registerUser: (data: UserInput) => fetcher.post('/users/register', data),
 
