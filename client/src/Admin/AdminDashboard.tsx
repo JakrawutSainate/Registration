@@ -1,13 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRegistration } from '../Context/RegistrationContext';
+import { API } from '../api/v1';
 import { Table } from '../Components/Table';
 import { Card, Button, Input } from '../Components/UI';
+import type { User } from '../types';
 
 export default function AdminDashboard() {
-    const { users, setTotalSeats, totalSeats, remainingSeats, usedSeats, fetchUsers } = useRegistration();
+    const { setTotalSeats, totalSeats, remainingSeats, usedSeats } = useRegistration(); // Don't use global users
     const [seatInput, setSeatInput] = useState(String(totalSeats));
+
+    // Local State
+    const [localUsers, setLocalUsers] = useState<User[]>([]);
     const [search, setSearch] = useState("");
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'createdAt', direction: 'desc' });
+
+    // Fetch Data
+    useEffect(() => {
+        fetchData();
+    }, [search, sortConfig]); // Auto-fetch on change
+
+    const fetchData = async () => {
+        try {
+            const data = await API.getAllUsers({
+                search: search,
+                sortBy: sortConfig.key,
+                sortOrder: sortConfig.direction
+            });
+            setLocalUsers(data);
+        } catch (err) {
+            console.error("Failed to fetch users", err);
+        }
+    };
 
     const handleUpdateKey = () => {
         const num = parseInt(seatInput, 10);
@@ -16,14 +39,11 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleSearch = (term: string) => {
-        setSearch(term);
-        fetchUsers({ search: term, sortBy: sortConfig.key, sortOrder: sortConfig.direction });
-    };
-
-    const handleSort = (key: string, direction: 'asc' | 'desc') => {
-        setSortConfig({ key, direction });
-        fetchUsers({ search, sortBy: key, sortOrder: direction });
+    const handleSort = (key: string) => {
+        setSortConfig(current => ({
+            key,
+            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+        }));
     };
 
     return (
@@ -65,15 +85,24 @@ export default function AdminDashboard() {
 
             <Table
                 title="Registered Users (Admin View)"
-                data={users}
+                data={localUsers}
                 columns={[
                     { header: 'First Name', accessor: 'firstName' },
                     { header: 'Last Name', accessor: 'lastName' },
                     { header: 'Phone Number', accessor: 'phone' },
                 ]}
-                onSearch={handleSearch}
                 onSort={handleSort}
                 sortConfig={sortConfig}
+                action={
+                    <div className="w-full sm:w-72">
+                        <Input
+                            label=""
+                            placeholder="Search users..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                }
             />
         </div>
     );
